@@ -25,6 +25,9 @@ def extract_product_information(node):
     ⋅ link          → URL to product
     """
 
+    import ipdb
+    ipdb.set_trace()
+
     # info container has description, title and product link
     info_node = node.xpath('./div[@class="fl in-info"]')[0]
     title = info_node.xpath('./h3[@class="in-title"]/a/text()')[0]
@@ -58,7 +61,17 @@ def crawl(search):
 
 
 def notify_slack(offers):
-    print(offers)  # TODO
+    for offer in offers:
+        message = '''
+        > New published offer *{}* for *{offerprice}*. 👉 <{}|Link to description.>
+        > Description: {}, Published: {}
+        '''.format(offer.get('title'), offer.get('price'), offer.get('link'), offer.get('description'))
+
+        print(message)
+
+        # self.slack_client.api_call(
+        #     "chat.postMessage", channel=self.slack_channel,
+        #     text=message, as_user=True)
 
 
 def crawl_forever(search, interval_every):
