@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-from lxml import html
-from time import sleep
+from contextlib import contextmanager
 from slacker import Slacker
+from time import sleep
+from lxml import html
 import argparse
 import requests
 import re
 import os
-
-# set the SLACK_API_TOKEN environment variable
-slack = Slacker(os.environ['SLACK_API_TOKEN'])
 
 def sanitize(some_string):
     """
@@ -55,17 +53,21 @@ def extract_products(tree):
 
 def crawl(search):
     while True:
-        # page = requests.get('http://www.tutti.ch/ganze-schweiz?q={}'.format(search))
-        page = requests.get('http://127.0.0.1:8080/quietcomfort.html'.format(search))
+        page = requests.get('https://www.tutti.ch/ganze-schweiz?q={}'.format(search))
         tree = html.fromstring(page.content)
+        offers = [extract_product_information(product) for product in extract_products(tree)]
 
-        yield [
-            product for product in [
-                extract_product_information(product) for product in extract_products(tree)
-            ]
-        ]
+        # on the page it's newest to oldest but
+        # we want the reversed order for the chat 
+        yield list(reversed(offers))
 
-def notify_slack(slack, offers):
+@contextmanager
+def slacker():
+    # set the SLACK_API_TOKEN environment variable
+    slack = Slacker(os.environ['SLACK_API_TOKEN'])
+    yield slack
+
+def notify_offers_in_slack(slack, offers):
 
     for offer in offers:
 
@@ -98,7 +100,9 @@ def crawl_forever(search, interval_every):
 
         # only notify offers that have not been notified abouu
         unnotified_offers = [offer for offer in offers if offer['identifier'] in unnotified_ids]
-        notify_slack(slack, unnotified_offers)
+
+        with slacker() as slack:
+            notify_offers_in_slack(slack, unnotified_offers)
 
         # wait for next interval
         sleep(interval_every)
