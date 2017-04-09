@@ -5,8 +5,12 @@ from time import sleep
 from lxml import html
 import argparse
 import requests
+import json
 import re
 import os
+
+# file where we keep track of the state
+MORITZ_STATE_FILE = 'moritz_state_v1'
 
 def sanitize(some_string):
     """
@@ -63,11 +67,12 @@ def crawl(search):
 
 @contextmanager
 def slacker():
-    # set the SLACK_API_TOKEN environment variable
+    """ Keep the slacker session short-lived, use 'with slacker() as slack'"""
     slack = Slacker(os.environ['SLACK_API_TOKEN'])
     yield slack
 
 def notify_offers_in_slack(slack, offers):
+    """ Notify slack about offers, the caller needs to keep track if the are actually new"""
 
     for offer in offers:
 
@@ -87,9 +92,54 @@ def notify_offers_in_slack(slack, offers):
         channel = os.environ.get('SLACK_CHANNEL', 'moritz')
         slack.chat.post_message('#{}'.format(channel), message)
 
+def rehydrate_search_state(slack, search)
+    """ Rehydrate the previous search state. """
+
+    response = slack.files.list()
+
+    if response.error is not None:
+        return
+
+    # get all uploaded files that are dumps of the previous states
+    state_files = [state_file for state_file in response['files'] if state_file.title == MORITZ_STATE_FILE]
+
+    if len(state_files) > 0:
+        previous_search_state_file = state_files[0]
+
+        # get the last state file, requires us to set
+        # a bearer token because we use a private url
+        bearer = os.environ['SLACK_API_TOKEN']
+        previous_search_state = requests.get(
+            previous_search_state_file['url_private_download'],
+            headers={'Authorization': 'Bearer {}'.format(bearer)
+        )
+
+    return previous_search_state or {search: []}
+
+        
+def hydrate_search_state(slack, search, notified_ids):
+    """
+    Saves the current search state (which ids the user has been notified about)
+    as json in a file on Slack. This file gets rehydrate when this program gets
+    executed the next time. This allows us to persist the state in an easy way.
+    """
+
+    channel = os.environ.get('SLACK_CHANNEL', 'moritz')
+
+    # merge the current and old ids, so we don't have duplicated or missing ids
+    updated_search_state = deepcopy(rehydrate_search_state())
+    updated_search_state.update(search, list(set(previous_notified_ids + notified_ids)))
+
+    slack.files.upload(
+        content=json.dumps(updated_search_state),
+        title=MORITZ_STATE_FILE,
+        channels=['#{}'.format(channel)],
+    )
+
+
 def crawl_forever(search, interval_every):
 
-    notified_ids = set()  # TODO persist
+    notified_ids = set(rehydrate_search_state)
 
     for offers in crawl(search):
         
@@ -103,6 +153,10 @@ def crawl_forever(search, interval_every):
 
         with slacker() as slack:
             notify_offers_in_slack(slack, unnotified_offers)
+
+        if unnotified_offers is not []:
+            with slacker() as slack:
+                hydrate_search_state(slack, search, notified_ids)
 
         # wait for next interval
         sleep(interval_every)
@@ -124,8 +178,12 @@ def main():
     )
 
     args = parser.parse_args()
+
     try:
-        crawl_forever(search=args.search, interval_every=args.interval_every)
+        crawl_forever(
+            search=args.search,
+            interval_every=args.interval_every
+        )
     except KeyboardInterrupt:
         raise 
 
