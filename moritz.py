@@ -64,14 +64,11 @@ def crawl(search):
 
 def notify_slack(offers):
 
-    import ipdb
-    ipdb.set_trace()
-
     for offer in offers:
         message = '''
-        > New published offer *{}* for *{offerprice}*. 👉 <{}|Link to description.>
+        > New published offer *{}* for *{}*. 👉 <{}|Link to description.>
         > Description: {}, Published: {}
-        '''.format(offer.get('title'), offer.get('price'), offer.get('link'), offer.get('description'))
+        '''.format(offer.get('title'), offer.get('price'), offer.get('link'), offer.get('description'), offer.get('published'))
 
         print(message)
 
@@ -86,9 +83,6 @@ def crawl_forever(search, interval_every):
 
     for offers in crawl(search):
         
-        import ipdb
-        ipdb.set_trace()
-
         # figure out which ids have not been notified about yet
         new_offer_ids = set([offer.get('identifier') for offer in offers])
         unnotified_ids = new_offer_ids.difference(notified_ids)
@@ -117,7 +111,10 @@ def main():
     )
 
     args = parser.parse_args()
-    crawl_forever(search=args.search, interval_every=args.interval_every)
+    try:
+        crawl_forever(search=args.search, interval_every=args.interval_every)
+    except KeyboardInterrupt:
+        raise 
 
 
 if __name__ == "__main__":
