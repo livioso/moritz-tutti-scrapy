@@ -12,7 +12,7 @@ def sanitize(some_string):
     carriage returns and whitespace, replace multiple
     whitespace with one whitespace.
     """
-    return re.sub('\s+', ' ', some_string).strip('\n\t\r')
+    return re.sub('\s+', ' ', some_string).strip('\n\t\r ')
 
 
 def extract_product_information(node):
@@ -25,9 +25,6 @@ def extract_product_information(node):
     ⋅ link          → URL to product
     """
 
-    import ipdb
-    ipdb.set_trace()
-
     # info container has description, title and product link
     info_node = node.xpath('./div[@class="fl in-info"]')[0]
     title = info_node.xpath('./h3[@class="in-title"]/a/text()')[0]
@@ -38,16 +35,15 @@ def extract_product_information(node):
     identifier = node.xpath('../@id')[0]
 
     return {
-        identifier: {
-            'title': sanitize(title),
-            'description': sanitize(description),
-            'link': sanitize(link),
-            'published': sanitize(published),
-            'price': sanitize(price),
-        }
+        'identifier': sanitize(identifier),
+        'title': sanitize(title),
+        'description': sanitize(description),
+        'link': sanitize(link),
+        'published': sanitize(published),
+        'price': sanitize(price),
     }
 
-
+    
 def extract_products(tree):
     """ Get the list of product <div> from Tutti.ch """
     return tree.xpath('//div[@class="in-click-th cf"]')
@@ -55,12 +51,22 @@ def extract_products(tree):
 
 def crawl(search):
     while True:
-        page = requests.get('http://www.tutti.ch/ganze-schweiz?q={}'.format(search))
+        # page = requests.get('http://www.tutti.ch/ganze-schweiz?q={}'.format(search))
+        page = requests.get('http://127.0.0.1:8080/quietcomfort.html'.format(search))
         tree = html.fromstring(page.content)
-        yield [extract_product_information(product) for product in extract_products(tree)]
+
+        yield [
+            product for product in [
+                extract_product_information(product) for product in extract_products(tree)
+            ]
+        ]
 
 
 def notify_slack(offers):
+
+    import ipdb
+    ipdb.set_trace()
+
     for offer in offers:
         message = '''
         > New published offer *{}* for *{offerprice}*. 👉 <{}|Link to description.>
@@ -79,13 +85,17 @@ def crawl_forever(search, interval_every):
     notified_ids = set()  # TODO persist
 
     for offers in crawl(search):
+        
+        import ipdb
+        ipdb.set_trace()
+
         # figure out which ids have not been notified about yet
-        new_offer_ids = set([offer.keys()[0] for offer in offers])
+        new_offer_ids = set([offer.get('identifier') for offer in offers])
         unnotified_ids = new_offer_ids.difference(notified_ids)
         notified_ids = notified_ids.union(unnotified_ids)
 
         # only notify offers that have not been notified about
-        notify_slack([offer for offer in offers if offer.keys()[0] in unnotified_ids])
+        notify_slack([offer for offer in offers if offer['identifier'] in unnotified_ids])
 
         # wait for next interval
         sleep(interval_every)
