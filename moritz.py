@@ -65,16 +65,25 @@ def crawl(search):
             ]
         ]
 
-
-def notify_slack(offers):
+def notify_slack(slack, offers):
 
     for offer in offers:
-        message = '''
-        > New published offer *{}* for *{}*. 👉 <{}|Link to description.>
-        > Description: {}, Published: {}
-        '''.format(offer.get('title'), offer.get('price'), offer.get('link'), offer.get('description'), offer.get('published'))
 
-        slack.chat.post_message('#moritz', message)
+        template = '''
+        >>> *{title} // {price}.- SFr.* _{description}_ 👉 <{link}|more information>
+        '''
+
+        message = template.format(
+            title = offer.get('title'),
+            price = offer.get('price'),
+            description = offer.get('description'),
+            published = offer.get('published'),
+            link = offer.get('link')
+        )
+
+        # defaults to moritz, but can be set via environment
+        channel = os.environ.get('SLACK_CHANNEL', 'moritz')
+        slack.chat.post_message('#{}'.format(channel), message)
 
 def crawl_forever(search, interval_every):
 
@@ -87,8 +96,9 @@ def crawl_forever(search, interval_every):
         unnotified_ids = new_offer_ids.difference(notified_ids)
         notified_ids = notified_ids.union(unnotified_ids)
 
-        # only notify offers that have not been notified about
-        notify_slack([offer for offer in offers if offer['identifier'] in unnotified_ids])
+        # only notify offers that have not been notified abouu
+        unnotified_offers = [offer for offer in offers if offer['identifier'] in unnotified_ids]
+        notify_slack(slack, unnotified_offers)
 
         # wait for next interval
         sleep(interval_every)
