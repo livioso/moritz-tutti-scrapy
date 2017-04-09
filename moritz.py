@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 from lxml import html
 from time import sleep
+from slacker import Slacker
 import argparse
 import requests
 import re
+import os
 
+# set the SLACK_API_TOKEN environment variable
+slack = Slacker(os.environ['SLACK_API_TOKEN'])
 
 def sanitize(some_string):
     """
@@ -70,12 +74,7 @@ def notify_slack(offers):
         > Description: {}, Published: {}
         '''.format(offer.get('title'), offer.get('price'), offer.get('link'), offer.get('description'), offer.get('published'))
 
-        print(message)
-
-        # self.slack_client.api_call(
-        #     "chat.postMessage", channel=self.slack_channel,
-        #     text=message, as_user=True)
-
+        slack.chat.post_message('#moritz', message)
 
 def crawl_forever(search, interval_every):
 
