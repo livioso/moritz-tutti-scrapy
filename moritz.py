@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from contextlib import contextmanager
 from slacker import Slacker
+from copy import deepcopy
 from time import sleep
 from lxml import html
 import argparse
@@ -10,7 +11,7 @@ import re
 import os
 
 # file where we keep track of the state
-MORITZ_STATE_FILE = 'moritz_state_v1'
+MORITZ_STATE_FILE = 'moritz_state_v4'
 
 def sanitize(some_string):
     """
@@ -65,11 +66,13 @@ def crawl(search):
         # we want the reversed order for the chat 
         yield list(reversed(offers))
 
+
 @contextmanager
 def slacker():
     """ Keep the slacker session short-lived, use 'with slacker() as slack'"""
     slack = Slacker(os.environ['SLACK_API_TOKEN'])
     yield slack
+
 
 def notify_offers_in_slack(slack, offers):
     """ Notify slack about offers, the caller needs to keep track if the are actually new"""
@@ -92,7 +95,8 @@ def notify_offers_in_slack(slack, offers):
         channel = os.environ.get('SLACK_CHANNEL', 'moritz')
         slack.chat.post_message('#{}'.format(channel), message)
 
-def rehydrate_search_state(slack, search)
+
+def rehydrate_search_state(slack, search):
     """ Rehydrate the previous search state. """
 
     response = slack.files.list()
@@ -101,7 +105,9 @@ def rehydrate_search_state(slack, search)
         return
 
     # get all uploaded files that are dumps of the previous states
-    state_files = [state_file for state_file in response['files'] if state_file.title == MORITZ_STATE_FILE]
+    state_files = [state_file for state_file in response.body['files'] if state_file['title'] == MORITZ_STATE_FILE]
+
+    previous_search_state = None
 
     if len(state_files) > 0:
         previous_search_state_file = state_files[0]
@@ -111,9 +117,10 @@ def rehydrate_search_state(slack, search)
         bearer = os.environ['SLACK_API_TOKEN']
         previous_search_state = requests.get(
             previous_search_state_file['url_private_download'],
-            headers={'Authorization': 'Bearer {}'.format(bearer)
-        )
+            headers={'Authorization': 'Bearer {}'.format(bearer)}
+        ).json()
 
+    # FIXME check that search is in keys()
     return previous_search_state or {search: []}
 
         
@@ -127,8 +134,9 @@ def hydrate_search_state(slack, search, notified_ids):
     channel = os.environ.get('SLACK_CHANNEL', 'moritz')
 
     # merge the current and old ids, so we don't have duplicated or missing ids
-    updated_search_state = deepcopy(rehydrate_search_state())
-    updated_search_state.update(search, list(set(previous_notified_ids + notified_ids)))
+    updated_search_state = deepcopy(rehydrate_search_state(slack, search))
+    updated_search_state_merged_id = set(updated_search_state[search]).union(notified_ids)
+    updated_search_state.update({search: list(updated_search_state_merged_id)})
 
     slack.files.upload(
         content=json.dumps(updated_search_state),
@@ -138,8 +146,8 @@ def hydrate_search_state(slack, search, notified_ids):
 
 
 def crawl_forever(search, interval_every):
-
-    notified_ids = set(rehydrate_search_state)
+    with slacker() as slack:
+        notified_ids = set(rehydrate_search_state(slack, search).get(search, []))
 
     for offers in crawl(search):
         
@@ -154,7 +162,7 @@ def crawl_forever(search, interval_every):
         with slacker() as slack:
             notify_offers_in_slack(slack, unnotified_offers)
 
-        if unnotified_offers is not []:
+        if len(unnotified_offers) > 0:
             with slacker() as slack:
                 hydrate_search_state(slack, search, notified_ids)
 
