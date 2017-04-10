@@ -32,6 +32,7 @@ def extract_product_information(node):
     ⋅ link          → URL to product
     """
 
+    # FIXME check len first
     # info container has description, title and product link
     info_node = node.xpath('./div[@class="fl in-info"]')[0]
     title = info_node.xpath('./h3[@class="in-title"]/a/text()')[0]
