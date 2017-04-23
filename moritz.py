@@ -13,6 +13,7 @@ import os
 # file where we keep track of the state
 MORITZ_STATE_FILE = 'moritz_state_v4'
 
+
 def sanitize(some_string):
     """
     Remove leading and trailing line breaks, tabs,
@@ -51,7 +52,7 @@ def extract_product_information(node):
         'price': sanitize(price),
     }
 
-    
+
 def extract_products(tree):
     """ Get the list of product <div> from Tutti.ch """
     return tree.xpath('//div[@class="in-click-th cf"]')
@@ -59,12 +60,14 @@ def extract_products(tree):
 
 def crawl(search):
     while True:
-        page = requests.get('https://www.tutti.ch/ganze-schweiz?q={}'.format(search))
+        page = requests.get(
+            'https://www.tutti.ch/ganze-schweiz?q={}'.format(search))
         tree = html.fromstring(page.content)
-        offers = [extract_product_information(product) for product in extract_products(tree)]
+        offers = [extract_product_information(
+            product) for product in extract_products(tree)]
 
         # on the page it's newest to oldest but
-        # we want the reversed order for the chat 
+        # we want the reversed order for the chat
         yield list(reversed(offers))
 
 
@@ -85,11 +88,11 @@ def notify_offers_in_slack(slack, offers):
         '''
 
         message = template.format(
-            title = offer.get('title'),
-            price = offer.get('price'),
-            description = offer.get('description'),
-            published = offer.get('published'),
-            link = offer.get('link')
+            title=offer.get('title'),
+            price=offer.get('price'),
+            description=offer.get('description'),
+            published=offer.get('published'),
+            link=offer.get('link')
         )
 
         # defaults to moritz, but can be set via environment
@@ -106,7 +109,8 @@ def rehydrate_search_state(slack, search):
         return
 
     # get all uploaded files that are dumps of the previous states
-    state_files = [state_file for state_file in response.body['files'] if state_file['title'] == MORITZ_STATE_FILE]
+    state_files = [state_file for state_file in response.body['files']
+                   if state_file['title'] == MORITZ_STATE_FILE]
 
     previous_search_state = None
 
@@ -124,7 +128,7 @@ def rehydrate_search_state(slack, search):
     # FIXME check that search is in keys()
     return previous_search_state or {search: []}
 
-        
+
 def hydrate_search_state(slack, search, notified_ids):
     """
     Saves the current search state (which ids the user has been notified about)
@@ -136,7 +140,8 @@ def hydrate_search_state(slack, search, notified_ids):
 
     # merge the current and old ids, so we don't have duplicated or missing ids
     updated_search_state = deepcopy(rehydrate_search_state(slack, search))
-    updated_search_state_merged_id = set(updated_search_state[search]).union(notified_ids)
+    updated_search_state_merged_id = set(
+        updated_search_state[search]).union(notified_ids)
     updated_search_state.update({search: list(updated_search_state_merged_id)})
 
     slack.files.upload(
@@ -148,17 +153,23 @@ def hydrate_search_state(slack, search, notified_ids):
 
 def crawl_forever(search, interval_every):
     with slacker() as slack:
-        notified_ids = set(rehydrate_search_state(slack, search).get(search, []))
+        notified_ids = set(
+            rehydrate_search_state(
+                slack,
+                search).get(
+                search,
+                []))
 
     for offers in crawl(search):
-        
+
         # figure out which ids have not been notified about yet
         new_offer_ids = set([offer.get('identifier') for offer in offers])
         unnotified_ids = new_offer_ids.difference(notified_ids)
         notified_ids = notified_ids.union(unnotified_ids)
 
         # only notify offers that have not been notified abouu
-        unnotified_offers = [offer for offer in offers if offer['identifier'] in unnotified_ids]
+        unnotified_offers = [
+            offer for offer in offers if offer['identifier'] in unnotified_ids]
 
         with slacker() as slack:
             notify_offers_in_slack(slack, unnotified_offers)
@@ -173,8 +184,7 @@ def crawl_forever(search, interval_every):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Crawl tutti.ch & notify about newly published offers in Slack.'
-    )
+        description='Crawl tutti.ch & notify about newly published offers in Slack.')
 
     parser.add_argument(
         '--search', required=True, type=str,
@@ -194,7 +204,7 @@ def main():
             interval_every=args.interval_every
         )
     except KeyboardInterrupt:
-        raise 
+        raise
 
 
 if __name__ == "__main__":
