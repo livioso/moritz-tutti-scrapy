@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
 from contextlib import contextmanager
 from slacker import Slacker
-from copy import deepcopy
 from time import sleep
 from lxml import html
 import argparse
 import requests
+import os.path
 import json
 import re
 import os
-
-# file where we keep track of the state
-MORITZ_STATE_FILE = 'moritz_state_v4'
 
 
 def sanitize(some_string):
@@ -23,13 +20,12 @@ def sanitize(some_string):
     return re.sub('\s+', ' ', some_string).strip('\n\t\r ')
 
 
-def get_node_value_or_empty_string(from_node, xpath):
+def value_or_empty_string(from_node, xpath):
     found_node = from_node.xpath(xpath)
-    node_value = found_node[0] if len(found_node) > 0 else ''
-    return sanitize(node_value)
+    return found_node[0] if len(found_node) > 0 else ''
 
 
-def extract_product_information(node):
+def extract_product_information(root_node_product):
     """
     Extract the following product information
     ⋅ title         → a caption
@@ -39,22 +35,26 @@ def extract_product_information(node):
     ⋅ link          → URL to product
     """
 
+    # each root product node should have an info section
+    info_node = root_node_product.xpath('./div[@class="fl in-info"]')[0]
+
+    # root product node has identifier and published date
+    identifier = value_or_empty_string(root_node_product, '../@id')
+    published = value_or_empty_string(root_node_product, './em[@class="fl in-date"]/text()')
+
     # info container has description, title and product link
-    info_node = node.xpath('./div[@class="fl in-info"]')[0]
-    title = get_node_value_or_empty_string(info_node, './h3[@class="in-title"]/a/text()')
-    description = get_node_value_or_empty_string(info_node, './p[@class="in-text"]/text()')
-    link = get_node_value_or_empty_string(info_node, './h3[@class="in-title"]/a/@href')
-    published = get_node_value_or_empty_string(info_node, './em[@class="fl in-date"]/text()')
-    price = get_node_value_or_empty_string(info_node, './span[@class="fl in-price"]/strong/text()')
-    identifier = get_node_value_or_empty_string(info_node, '../@id')
+    title = value_or_empty_string(info_node, './h3[@class="in-title"]/a/text()')
+    description = value_or_empty_string(info_node, './p[@class="in-text"]/text()')
+    link = value_or_empty_string(info_node, './h3[@class="in-title"]/a/@href')
+    price = value_or_empty_string(info_node, './span[@class="fl in-price"]/strong/text()')
 
     return {
-        'identifier': identifier,
-        'title': title,
-        'description': description,
-        'link': link,
-        'published': published,
-        'price': price,
+        'identifier': sanitize(identifier),
+        'title': sanitize(title),
+        'description': sanitize(description),
+        'link': sanitize(link),
+        'published': sanitize(published),
+        'price': sanitize(price),
     }
 
 
@@ -108,65 +108,40 @@ def notify_offers_in_slack(slack, offers):
         slack.chat.post_message('#{}'.format(channel), message)
 
 
-def rehydrate_search_state(slack, search):
-    """ Rehydrate the previous search state. """
+def load_search_data_json(file_path):
 
-    response = slack.files.list()
+    if not os.path.isfile(file_path):
+        return {}
 
-    if response.error is not None:
-        return
-
-    # get all uploaded files that are dumps of the previous states
-    state_files = [state_file for state_file in response.body['files']
-                   if state_file['title'] == MORITZ_STATE_FILE]
-
-    previous_search_state = None
-
-    if len(state_files) > 0:
-        previous_search_state_file = state_files[0]
-
-        # get the last state file, requires us to set
-        # a bearer token because we use a private url
-        bearer = os.environ['SLACK_API_TOKEN']
-        previous_search_state = requests.get(
-            previous_search_state_file['url_private_download'],
-            headers={'Authorization': 'Bearer {}'.format(bearer)}
-        ).json()
-
-    # FIXME check that search is in keys()
-    return previous_search_state or {search: []}
+    with open(file_path, 'r') as data_file:
+        return json.load(data_file)
 
 
-def hydrate_search_state(slack, search, notified_ids):
+def dump_search_data_json(search, notified_ids, file_path):
     """
-    Saves the current search state (which ids the user has been notified about)
-    as json in a file on Slack. This file gets rehydrate when this program gets
-    executed the next time. This allows us to persist the state in an easy way.
+    Dump the search into a combined file that keeps track
+    of all the notified_ids for each search. The format
+    looks like this:
+
+    {
+        'roomba': [42, 23, 45, 46],
+        'quietcomfort qc35': [12, 24, 64]
+    }
+
     """
 
-    channel = os.environ.get('SLACK_CHANNEL', 'moritz')
+    # update the notified_ids just for the current search
+    searches = load_search_data_json(file_path)
+    searches.update({search: list(notified_ids)})
 
-    # merge the current and old ids, so we don't have duplicated or missing ids
-    updated_search_state = deepcopy(rehydrate_search_state(slack, search))
-    updated_search_state_merged_id = set(
-        updated_search_state[search]).union(notified_ids)
-    updated_search_state.update({search: list(updated_search_state_merged_id)})
-
-    slack.files.upload(
-        content=json.dumps(updated_search_state),
-        title=MORITZ_STATE_FILE,
-        channels=['#{}'.format(channel)],
-    )
+    with open(file_path, 'w+') as data_file:
+        json.dump(searches, data_file)
 
 
 def crawl_forever(search, interval_every):
-    with slacker() as slack:
-        notified_ids = set(
-            rehydrate_search_state(
-                slack,
-                search).get(
-                search,
-                []))
+    file_path = os.environ.get('SEARCHES_JSON', 'data/searches.json')
+    searches = load_search_data_json(file_path)
+    notified_ids = set(searches.get(search, []))
 
     for offers in crawl(search):
 
@@ -175,16 +150,16 @@ def crawl_forever(search, interval_every):
         unnotified_ids = new_offer_ids.difference(notified_ids)
         notified_ids = notified_ids.union(unnotified_ids)
 
-        # only notify offers that have not been notified abouu
+        # only notify offers that have not been notified about
         unnotified_offers = [
             offer for offer in offers if offer['identifier'] in unnotified_ids]
 
-        with slacker() as slack:
-            notify_offers_in_slack(slack, unnotified_offers)
-
         if len(unnotified_offers) > 0:
             with slacker() as slack:
-                hydrate_search_state(slack, search, notified_ids)
+                notify_offers_in_slack(slack, unnotified_offers)
+
+            # update json file dump since notified_ids has changed
+            dump_search_data_json(search, notified_ids, file_path)
 
         # wait for next interval
         sleep(interval_every)
@@ -196,7 +171,7 @@ def main():
 
     parser.add_argument(
         '--search', required=True, type=str,
-        help='Tells what to look for, e.g. "Roomba 780"'
+        help='Tell what to look for, e.g. "Roomba 780"'
     )
 
     parser.add_argument(
