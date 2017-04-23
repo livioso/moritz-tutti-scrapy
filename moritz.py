@@ -41,12 +41,12 @@ def extract_product_information(root_node_product):
     # root product node has identifier and published date
     identifier = value_or_empty_string(root_node_product, '../@id')
     published = value_or_empty_string(root_node_product, './em[@class="fl in-date"]/text()')
+    price = value_or_empty_string(root_node_product, './span[@class="fl in-price"]/strong/text()')
 
     # info container has description, title and product link
     title = value_or_empty_string(info_node, './h3[@class="in-title"]/a/text()')
     description = value_or_empty_string(info_node, './p[@class="in-text"]/text()')
     link = value_or_empty_string(info_node, './h3[@class="in-title"]/a/@href')
-    price = value_or_empty_string(info_node, './span[@class="fl in-price"]/strong/text()')
 
     return {
         'identifier': sanitize(identifier),
