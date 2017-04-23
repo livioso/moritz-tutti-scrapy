@@ -92,7 +92,7 @@ def slacker():
 
 
 def notify_offers_in_slack(slack, offers):
-    """ Notify slack about offers, the caller needs to keep track if the are actually new"""
+    """ Notify slack about offers, the caller needs to keep track if they are actually new"""
 
     for offer in offers:
 
