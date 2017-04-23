@@ -11,3 +11,6 @@ docker run --rm \
   -v ~/.moritz:/usr/src/app/data \
   -it moritz:latest python moritz.py --search="roomba"
 ```
+
+### Screenshot
+<img src="https://github.com/livioso/Moritz/blob/master/screenshot.png?raw=True" width="400">
