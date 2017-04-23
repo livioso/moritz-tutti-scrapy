@@ -42,18 +42,19 @@ def extract_product_information(root_node_product):
     identifier = value_or_empty_string(root_node_product, '../@id')
     published = value_or_empty_string(root_node_product, './em[@class="fl in-date"]/text()')
     price = value_or_empty_string(root_node_product, './span[@class="fl in-price"]/strong/text()')
-    image_url = value_or_empty_string(root_node_product, './div[@class="li-thumb fl in-thumb"]/a/img/@src')
+    thumb_url = value_or_empty_string(root_node_product, './div[@class="li-thumb fl in-thumb"]/a/img/@src')
 
     # info container has description, title and product link
     title = value_or_empty_string(info_node, './h3[@class="in-title"]/a/text()')
     description = value_or_empty_string(info_node, './p[@class="in-text"]/text()')
     link = value_or_empty_string(info_node, './h3[@class="in-title"]/a/@href')
+    link = link.replace('http://', 'https://')
 
     return {
         'identifier': sanitize(identifier),
         'title': sanitize(title),
         'description': sanitize(description),
-        'image_url': sanitize(image_url),
+        'thumb_url': sanitize(thumb_url),
         'link': sanitize(link),
         'published': sanitize(published),
         'price': sanitize(price),
@@ -95,21 +96,27 @@ def notify_offers_in_slack(slack, offers):
 
     for offer in offers:
 
-        template = '''
-        >>> *{title} // {price}.- SFr.* _{description}_ 👉 <{link}|more information>
-        '''
-
-        message = template.format(
-            title=offer.get('title'),
-            price=offer.get('price'),
-            description=offer.get('description'),
-            published=offer.get('published'),
-            link=offer.get('link')
-        )
-
         # defaults to moritz, but can be set via environment
         channel = os.environ.get('SLACK_CHANNEL', 'moritz')
-        slack.chat.post_message('#{}'.format(channel), message)
+
+        # workaround for mobile: on mobile the title_link does not work (bug?)
+        # therefore add a little link at the end of the description to tutti.ch
+        text = '{} <{}|more>'.format(offer.get('description'), offer.get('link'))
+
+        attachments = [{
+            'color': "#36a64f",
+            'title': offer.get('title'),
+            'title_link': offer.get('link'),
+            'thumb_url': offer.get('thumb_url'),
+            'footer': 'Price: {}.- CHF'.format(offer.get('price')),
+            'text': text
+        }]
+
+        slack.chat.post_message(
+            channel='#{}'.format(channel),
+            as_user='moritz',
+            attachments=attachments
+        )
 
 
 def load_search_data_json(file_path):
