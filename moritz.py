@@ -23,6 +23,12 @@ def sanitize(some_string):
     return re.sub('\s+', ' ', some_string).strip('\n\t\r ')
 
 
+def get_node_value_or_empty_string(from_node, xpath):
+    found_node = from_node.xpath(xpath)
+    node_value = found_node[0] if len(found_node) > 0 else ''
+    return sanitize(node_value)
+
+
 def extract_product_information(node):
     """
     Extract the following product information
@@ -33,23 +39,22 @@ def extract_product_information(node):
     ⋅ link          → URL to product
     """
 
-    # FIXME check len first
     # info container has description, title and product link
     info_node = node.xpath('./div[@class="fl in-info"]')[0]
-    title = info_node.xpath('./h3[@class="in-title"]/a/text()')[0]
-    description = info_node.xpath('./p[@class="in-text"]/text()')[0]
-    link = info_node.xpath('./h3[@class="in-title"]/a/@href')[0]
-    published = node.xpath('./em[@class="fl in-date"]/text()')[0]
-    price = node.xpath('./span[@class="fl in-price"]/strong/text()')[0]
-    identifier = node.xpath('../@id')[0]
+    title = get_node_value_or_empty_string(info_node, './h3[@class="in-title"]/a/text()')
+    description = get_node_value_or_empty_string(info_node, './p[@class="in-text"]/text()')
+    link = get_node_value_or_empty_string(info_node, './h3[@class="in-title"]/a/@href')
+    published = get_node_value_or_empty_string(info_node, './em[@class="fl in-date"]/text()')
+    price = get_node_value_or_empty_string(info_node, './span[@class="fl in-price"]/strong/text()')
+    identifier = get_node_value_or_empty_string(info_node, '../@id')
 
     return {
-        'identifier': sanitize(identifier),
-        'title': sanitize(title),
-        'description': sanitize(description),
-        'link': sanitize(link),
-        'published': sanitize(published),
-        'price': sanitize(price),
+        'identifier': identifier,
+        'title': title,
+        'description': description,
+        'link': link,
+        'published': published,
+        'price': price,
     }
 
 
@@ -60,11 +65,14 @@ def extract_products(tree):
 
 def crawl(search):
     while True:
-        page = requests.get(
-            'https://www.tutti.ch/ganze-schweiz?q={}'.format(search))
+        url_query = 'https://www.tutti.ch/ganze-schweiz?q={}'
+        page = requests.get(url_query.format(search))
         tree = html.fromstring(page.content)
-        offers = [extract_product_information(
-            product) for product in extract_products(tree)]
+
+        offers = [
+            extract_product_information(product)
+            for product in extract_products(tree) if len(product) > 0
+        ]
 
         # on the page it's newest to oldest but
         # we want the reversed order for the chat
