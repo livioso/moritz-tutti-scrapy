@@ -9,5 +9,5 @@ docker run --rm \
   -e "SLACK_API_TOKEN=YOUR_API_TOKEN" \
   -e "SLACK_CHANNEL=moritz" \
   -v ~/.moritz:/usr/src/app/data \
-  -it moritz:latest python --search="roomba"
+  -it moritz:latest python moritz.py --search="roomba"
 ```
