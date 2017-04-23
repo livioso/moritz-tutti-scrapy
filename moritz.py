@@ -104,7 +104,7 @@ def notify_offers_in_slack(slack, offers):
         text = '{} <{}|more>'.format(offer.get('description'), offer.get('link'))
 
         attachments = [{
-            'color': "#36a64f",
+            'color': "#55E3C7",
             'title': offer.get('title'),
             'title_link': offer.get('link'),
             'thumb_url': offer.get('thumb_url'),
@@ -114,7 +114,7 @@ def notify_offers_in_slack(slack, offers):
 
         slack.chat.post_message(
             channel='#{}'.format(channel),
-            as_user='moritz',
+            as_user='moritz_bot',
             attachments=attachments
         )
 
