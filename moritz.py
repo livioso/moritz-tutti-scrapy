@@ -64,6 +64,8 @@ def extract_products(tree):
 
 
 def crawl(search):
+    """ Yields the latest offers, forever. """
+
     while True:
         url_query = 'https://www.tutti.ch/ganze-schweiz?q={}'
         page = requests.get(url_query.format(search))
@@ -109,6 +111,7 @@ def notify_offers_in_slack(slack, offers):
 
 
 def load_search_data_json(file_path):
+    """ Just get the search data file as json, if existing otherwise {} """
 
     if not os.path.isfile(file_path):
         return {}
