@@ -1,5 +1,5 @@
 ## Moritz
-Get instantly notified in Slack when a new offer that matches a search query gets published on Tutti.ch
+Get instantly notified in Slack when a new offer that matches a [search query gets published](http://www.tutti.ch/ganze-schweiz) on [Tutti.ch](http://www.tutti.ch)
 
 ### Usage
 ```
