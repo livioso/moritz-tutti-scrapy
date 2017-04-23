@@ -98,6 +98,7 @@ def notify_offers_in_slack(slack, offers):
 
         # defaults to moritz, but can be set via environment
         channel = os.environ.get('SLACK_CHANNEL', 'moritz')
+        bot_user = os.environ.get('SLACK_BOT_USER', 'moritz_bot')
 
         # workaround for mobile: on mobile the title_link does not work (bug?)
         # therefore add a little link at the end of the description to tutti.ch
@@ -114,8 +115,8 @@ def notify_offers_in_slack(slack, offers):
 
         slack.chat.post_message(
             channel='#{}'.format(channel),
-            as_user='moritz_bot',
-            attachments=attachments
+            attachments=attachments,
+            as_user=bot_user
         )
 
 
@@ -164,7 +165,8 @@ def crawl_forever(search, interval_every):
 
         # only notify offers that have not been notified about
         unnotified_offers = [
-            offer for offer in offers if offer['identifier'] in unnotified_ids]
+            offer for offer in offers if offer['identifier'] in unnotified_ids
+        ]
 
         if len(unnotified_offers) > 0:
             with slacker() as slack:
