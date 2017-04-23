@@ -38,10 +38,11 @@ def extract_product_information(root_node_product):
     # each root product node should have an info section
     info_node = root_node_product.xpath('./div[@class="fl in-info"]')[0]
 
-    # root product node has identifier and published date
+    # root product node has identifier, published date and price
     identifier = value_or_empty_string(root_node_product, '../@id')
     published = value_or_empty_string(root_node_product, './em[@class="fl in-date"]/text()')
     price = value_or_empty_string(root_node_product, './span[@class="fl in-price"]/strong/text()')
+    image_url = value_or_empty_string(root_node_product, './div[@class="li-thumb fl in-thumb"]/a/img/@src')
 
     # info container has description, title and product link
     title = value_or_empty_string(info_node, './h3[@class="in-title"]/a/text()')
@@ -52,6 +53,7 @@ def extract_product_information(root_node_product):
         'identifier': sanitize(identifier),
         'title': sanitize(title),
         'description': sanitize(description),
+        'image_url': sanitize(image_url),
         'link': sanitize(link),
         'published': sanitize(published),
         'price': sanitize(price),
