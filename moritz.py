@@ -69,9 +69,12 @@ def extract_products(tree):
 def crawl(search):
     """ Yields the latest offers, forever. """
 
+    # URL to the Tutti search, can be set via environment TUTTI_URL
+    url_default = 'https://www.tutti.ch/ganze-schweiz/angebote?q={search_query}'
+    url = os.environ.get('TUTTI_URL', url_default)
+
     while True:
-        url_query = 'https://www.tutti.ch/ganze-schweiz?q={}'
-        page = requests.get(url_query.format(search))
+        page = requests.get(url.format(search_query=search))
         tree = html.fromstring(page.content)
 
         offers = [
