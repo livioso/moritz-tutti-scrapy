@@ -107,12 +107,15 @@ def notify_offers_in_slack(slack, offers):
         # therefore add a little link at the end of the description to tutti.ch
         text = '{} <{}|more>'.format(offer.get('description'), offer.get('link'))
 
+        price = offer.get('price')
+        footer = 'Price: {}.- CHF'.format(price) if price != 'Gratis' else 'Price: Free'
+
         attachments = [{
             'color': "#55E3C7",
             'title': offer.get('title'),
             'title_link': offer.get('link'),
             'thumb_url': offer.get('thumb_url'),
-            'footer': 'Price: {}.- CHF'.format(offer.get('price')),
+            'footer': footer,
             'text': text
         }]
 
