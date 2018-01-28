@@ -14,6 +14,9 @@ docker run --rm \
   -it moritz:latest python moritz.py --search="roomba"
 ```
 
+Alternatively, use the `run.sh` script to manage multiple searches
+
+
 ### Usage
 ```
 usage: moritz.py [-h] --search SEARCH [--interval-every INTERVAL_EVERY]
