@@ -1,86 +1,90 @@
 # -*- coding: utf-8 -*-
 from contextlib import contextmanager
+from requests_html import HTMLSession
 from slacker import Slacker
 from time import sleep
-from lxml import html
 import argparse
-import requests
+import hashlib
 import os.path
 import json
-import re
 import os
 
 
-def sanitize(some_string):
-    """
-    Remove leading and trailing line breaks, tabs,
-    carriage returns and whitespace, replace multiple
-    whitespace with one whitespace.
-    """
-    return re.sub('\s+', ' ', some_string).strip('\n\t\r ')
+def extract_title(offer):
+    return offer.find('a')[1].text
 
 
-def value_or_empty_string(from_node, xpath):
-    found_node = from_node.xpath(xpath)
-    return found_node[0] if len(found_node) > 0 else ''
+def extract_description(offer):
+    return offer.find('p', first=True).text
 
 
-def extract_product_information(root_node_product):
+def extract_price(offer):
+    return offer.find('strong', first=True).text
+
+
+def extract_link(offer):
+    return 'https://tutti.ch{}'.format(offer.find('a')[1].links.pop())
+
+
+def extract_identifier(offer):
+    return hashlib.md5(offer.text.encode('utf-8')).hexdigest()
+
+
+def extract_published(offer):
+    return offer.find('span', first=True).text
+
+
+def extract_thumb_url(offer):
+    return offer.find('img', first=True).attrs['src']
+
+
+def extract_details(offer):
     """
     Extract the following product information
     ⋅ title         → a caption
     ⋅ description   → some more description
-    ⋅ published     → published ["hh:mm" | "gestern" | "DD.MM"]
+    ⋅ published     → published ["hh:mm" | "gestern" | "DD.MM" | heute]
     ⋅ price         → price in CHF.
     ⋅ link          → URL to product
     """
 
-    # each root product node should have an info section
-    info_node = root_node_product.xpath('./div[@class="fl in-info"]')[0]
-
-    # root product node has identifier, published date and price
-    identifier = value_or_empty_string(root_node_product, '../@id')
-    published = value_or_empty_string(root_node_product, './em[@class="fl in-date"]/text()')
-    price = value_or_empty_string(root_node_product, './span[@class="fl in-price"]/strong/text()')
-    thumb_url = value_or_empty_string(root_node_product, './div[@class="li-thumb fl in-thumb"]/a/img/@src')
-
-    # info container has description, title and product link
-    title = value_or_empty_string(info_node, './h3[@class="in-title"]/a/text()')
-    description = value_or_empty_string(info_node, './p[@class="in-text"]/text()')
-    link = value_or_empty_string(info_node, './h3[@class="in-title"]/a/@href')
-    link = link.replace('http://', 'https://')
-
     return {
-        'identifier': sanitize(identifier),
-        'title': sanitize(title),
-        'description': sanitize(description),
-        'thumb_url': sanitize(thumb_url),
-        'link': sanitize(link),
-        'published': sanitize(published),
-        'price': sanitize(price),
+        'identifier': extract_identifier(offer),
+        'title': extract_title(offer),
+        'description': extract_description(offer),
+        'thumb_url': extract_thumb_url(offer),
+        'link': extract_link(offer),
+        'published': extract_published(offer),
+        'price': extract_price(offer),
     }
 
 
-def extract_products(tree):
-    """ Get the list of product <div> from Tutti.ch """
-    return tree.xpath('//div[@class="in-click-th cf"]')
+def extract_offers(response):
+    """ Get the list of offers <div> from Tutti.ch """
+    return response.html.find('div.pCKlD._1hpKF > div')
 
 
 def crawl(search):
     """ Yields the latest offers, forever. """
 
     # URL to the Tutti search, can be set via environment TUTTI_URL
-    url_default = 'https://www.tutti.ch/ganze-schweiz/angebote?q={search_query}'
+    url_default = 'https://www.tutti.ch/de/li/ganze-schweiz/angebote?q={search}&redirect=platform'
     url = os.environ.get('TUTTI_URL', url_default)
+    url = url.format(search=search)
+
+    session = HTMLSession()
 
     while True:
-        page = requests.get(url.format(search_query=search))
-        tree = html.fromstring(page.content)
 
-        offers = [
-            extract_product_information(product)
-            for product in extract_products(tree) if len(product) > 0
-        ]
+        response = session.get('https://www.tutti.ch/de/li/ganze-schweiz/angebote?q=Roomba&redirect=platform')
+
+        # render the site in chromium:
+        # initially, only a handful of images are visible
+        # therefore scroll down till we have all images, always
+        # waiting a bit.
+        response.html.render(scrolldown=10, sleep=0.3, timeout=15)
+
+        offers = [extract_details(offer) for offer in extract_offers(response)]
 
         # on the page it's newest to oldest but
         # we want the reversed order for the chat
@@ -108,7 +112,7 @@ def notify_offers_in_slack(slack, offers):
         text = '{} <{}|more>'.format(offer.get('description'), offer.get('link'))
 
         price = offer.get('price')
-        footer = 'Price: {}.- CHF'.format(price) if price != 'Gratis' else 'Price: Free'
+        footer = 'Price: {} CHF'.format(price) if price != 'Gratis' else 'Price: Free'
 
         attachments = [{
             'color': "#55E3C7",
