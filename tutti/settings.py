@@ -1,5 +1,8 @@
-from dotenv import load_dotenv
-load_dotenv()
+import sys
+
+if "dotenv" in sys.modules:
+    from dotenv import load_dotenv
+    load_dotenv()
 
 BOT_NAME = "tutti"
 
