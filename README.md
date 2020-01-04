@@ -1,30 +1,41 @@
 ## Moritz
-Get instantly notified in Slack when a new offer that matches a [search query gets published](http://www.tutti.ch/ganze-schweiz) on [Tutti.ch](http://www.tutti.ch)
 
-### Getting Started
+Get notified in Slack when a new offer that matches a [search query gets published](http://www.tutti.ch/ganze-schweiz) on [Tutti.ch](http://www.tutti.ch)
+
+### Scrapinghhub
+
+1. Fork this repository and setup a new [Scrapinghub project](https://scrapinghub.com).
+2. Connect your fork to Scrapinghub and deploy the spider (connect to Github).
+3. Set `SLACK_WEBHOOK`, `SCRAPINGHUB_API_KEY` and `SCRAPINGHUB_PROJECT` in the settings of your project.
+4. Run the spider with desired `searchterm` argument on Scrapinghub (either manual or periodic).
+
+### Developemnt
+
+_Installation_
+
 ```
-# ... build it
-docker build -t moritz .
-
-# ... run it
-docker run --rm \
-  -e "SLACK_API_TOKEN=YOUR_API_TOKEN" \
-  -e "SLACK_CHANNEL=moritz" \
-  -v ~/.moritz:/usr/src/app/data \
-  -it moritz:latest python moritz.py --search="roomba"
+python3 -m venv .venv
+. ./.venv/bin/activate
+pip install -r repository.txt
 ```
 
-### Usage
+_Add add an `.env` file_
+
 ```
-usage: moritz.py [-h] --search SEARCH [--interval-every INTERVAL_EVERY]
+# Slack Webhook to be called
+SLACK_WEBHOOK=https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/XXXXXXXX
 
-Crawl tutti.ch & get notified about newly published offers in Slack.
+# Optional: Scraping Hub Project & Key
+# SCRAPINGHUB_API_KEY=xxx
+# SCRAPINGHUB_PROJECT=xxx
+```
 
-optional arguments:
-  -h, --help                            show this help message and exit
-  --search SEARCH                       Tell what to look for, e.g. "Roomba 780"
-  --interval-every INTERVAL_EVERY       Time between intervals in seconds [optional, default: 60s]
+_Running the spider_
+
+```
+scrapy crawl tutti -o ~/Desktop/offers.json -a searchterm=iphone -a pages=100
 ```
 
 ### Screenshot
+
 <img src="https://github.com/livioso/Moritz/blob/master/screenshot.png?raw=True" width="360">
