@@ -33,7 +33,7 @@ SLACK_WEBHOOK=https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/XXXXXXXX
 _Running the spider_
 
 ```
-scrapy crawl tutti -o ~/Desktop/offers.json -a searchterm=iphone -a pages=100
+scrapy crawl tutti -o ~/Desktop/offers.json -a searchterm=roomba -a pages=100
 ```
 
 ### Screenshot
