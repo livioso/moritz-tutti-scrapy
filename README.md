@@ -9,7 +9,7 @@ Get notified in Slack when a new offer that matches a [search query gets publish
 3. Set `SLACK_WEBHOOK`, `SCRAPINGHUB_API_KEY` and `SCRAPINGHUB_PROJECT` in the settings of your project.
 4. Run the spider with desired `searchterm` argument on Scrapinghub (either manual or periodic).
 
-### Developemnt
+### Development
 
 _Installation_
 
