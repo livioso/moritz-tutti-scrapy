@@ -2,10 +2,12 @@ import os
 import sys
 import importlib
 
-if importlib.util.find_spec("dotenv"):
+try:
     from dotenv import load_dotenv
 
     load_dotenv()
+except:
+    pass
 
 # custom settings
 SLACK_WEBHOOK = os.environ.get("SLACK_WEBHOOK")
