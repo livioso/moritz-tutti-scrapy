@@ -17,7 +17,7 @@ class TuttiSpider(scrapy.Spider):
             yield scrapy.Request(
                 callback=self.parse,
                 dont_filter=True,
-                url=f"https://www.tutti.ch/de/li/ganze-schweiz?o={page}&q={self.searchterm}",
+                url=f"https://www.tutti.ch/de/li/ganze-schweiz/angebote?o={page}&q={self.searchterm}",
             )
 
     def transform_raw(self, data):
