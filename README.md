@@ -1,13 +1,13 @@
 ## Moritz
 
-Get notified in Slack when a new offer that matches a [search query gets published](http://www.tutti.ch/ganze-schweiz) on [Tutti.ch](http://www.tutti.ch)
+General purpose Tutti crawler with optional [pipeline](./tutti/pipelines.py) posting to Slack when a new offer matching a searchterm gets published on [Tutti.ch](http://www.tutti.ch).
 
 ### Scrapinghhub
 
-1. Fork this repository and setup a new [Scrapinghub project](https://scrapinghub.com).
-2. Connect your fork to Scrapinghub and deploy the spider (connect to Github).
-3. Set `SLACK_WEBHOOK`, `SCRAPINGHUB_API_KEY` and `SCRAPINGHUB_PROJECT` in the settings of your project.
-4. Run the spider with desired `searchterm` argument on Scrapinghub (either manual or periodic).
+1. Setup a new [Scrapinghub project](https://scrapinghub.com).
+2. Deploy the spider using `shub deploy`.
+3. Optional: Set `SLACK_WEBHOOK` and `SCRAPINGHUB_API_KEY` in the settings of your project to receive Slack notifications.
+4. Run the spider with desired `searchterm` argument on Scrapinghub (manual or periodic).
 
 ### Development
 
@@ -19,23 +19,32 @@ python3 -m venv .venv
 pip install -r repository.txt
 ```
 
-_Add add an `.env` file_
+_Add add an optional `.env` file_
 
 ```
-# Slack Webhook to be called
-SLACK_WEBHOOK=https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/XXXXXXXX
+# Optional: Slack Webhook to be called
+# SLACK_WEBHOOK=https://hooks.slack.com/services/XXXXXXXX/XXXXXXXX/XXXXXXXX
 
 # Optional: Scraping Hub Project & Key
+# only make sense for development
 # SCRAPINGHUB_API_KEY=xxx
-# SCRAPINGHUB_PROJECT=xxx
+# SCRAPY_PROJECT_ID=xxx
 ```
 
-_Running the spider_
+_Running the spider to crawl for a searchterm_
+
+Example 1: Crawl the latest `roomba` offers:
 
 ```
-scrapy crawl tutti -o ~/Desktop/offers.json -a searchterm=roomba -a pages=100
+scrapy crawl tutti -a searchterm=roomba
 ```
 
-### Screenshot
+Example 2: Crawl the latest 100 pages of all offers and dump results to a json:
+
+```
+scrapy crawl tutti -o offers.json -a pages=100
+```
+
+### Screenshot of Slack integration
 
 <img src="https://github.com/livioso/Moritz/blob/master/screenshot.png?raw=True" width="360">
