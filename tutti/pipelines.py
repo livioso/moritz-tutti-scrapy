@@ -1,14 +1,22 @@
 import os
 from scrapinghub import ScrapinghubClient
-from scrapy.utils.project import get_project_settings
 from .utils import post_to_slack
 
 
 class TuttiPipeline:
-    def get_last_job_ids(self):
+    def open_spider(self, spider):
+        self.spider = spider
+        self.last_job_ids = self.get_last_job_ids()
 
-        project_id = self.settings.get("SCRAPY_PROJECT_ID")
-        api_key = self.settings.get("SCRAPINGHUB_API_KEY")
+    def process_item(self, item, spider):
+        if item["id"] not in self.last_job_ids:
+            self.handle_webhooks(item)
+
+        return item
+
+    def get_last_job_ids(self):
+        project_id = os.environ.get("SCRAPY_PROJECT_ID")
+        api_key = self.spider.settings.get("SCRAPINGHUB_API_KEY")
 
         if not project_id or not api_key:
             return []
@@ -20,25 +28,28 @@ class TuttiPipeline:
         if not jobs:
             return []
 
-        # last = index 0
-        last_job_key = jobs[0]["key"]
-        last_job = client.get_job(last_job_key)
+        # find last job for spider searchterm same spider
+        # can be invoked with different searchterms
+        last_matching_job = None
 
-        return [item["id"] for item in last_job.items.iter()]
+        for each in jobs:
+            key = each["key"]
+            job = client.get_job(key)
 
-    def __init__(self):
-        self.settings = get_project_settings()
-        self.last_job_ids = self.get_last_job_ids()
+            metadata = dict(job.metadata.list())
+            searchterm = metadata.get("spider_args", {}).get("searchterm", "")
+
+            if self.spider.searchterm == searchterm:
+                last_matching_job = job
+                break
+
+        if not last_matching_job:
+            return []
+
+        return [item["id"] for item in last_matching_job.items.iter()]
 
     def handle_webhooks(self, item):
-        slack_webhook = self.settings.get("SLACK_WEBHOOK")
+        slack_webhook = self.spider.settings.get("SLACK_WEBHOOK")
 
         if slack_webhook:
             post_to_slack(item, slack_webhook)
-
-    def process_item(self, item, spider):
-
-        if item["id"] not in self.last_job_ids:
-            self.handle_webhooks(item)
-
-        return item
