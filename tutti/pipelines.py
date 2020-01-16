@@ -6,11 +6,7 @@ from .utils import post_to_slack
 class TuttiPipeline:
     def open_spider(self, spider):
         self.spider = spider
-        self.slack_webhook = spider.settings.get("SLACK_WEBHOOK")
-        self.last_job_ids = []
-
-        if self.slack_webhook:
-            self.last_job_ids = self.get_last_job_ids()
+        self.last_job_ids = self.get_last_job_ids()
 
     def process_item(self, item, spider):
         if item["id"] not in self.last_job_ids:
@@ -53,5 +49,7 @@ class TuttiPipeline:
         return [item["id"] for item in last_matching_job.items.iter()]
 
     def handle_webhooks(self, item):
-        if self.slack_webhook:
-            post_to_slack(item, self.slack_webhook)
+        slack_webhook = self.spider.settings.get("SLACK_WEBHOOK")
+
+        if slack_webhook:
+            post_to_slack(item, slack_webhook)
