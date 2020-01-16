@@ -48,7 +48,8 @@ class TuttiSpider(scrapy.Spider):
             pattern
         )[0]
 
-        offers = json.loads(data)["items"]
+        items = json.loads(data)["items"]
+        offers = reversed(sorted(items.items(), key=lambda item: item[1]["epoch_time"]))
 
-        for _, offer in offers.items():
+        for _, offer in offers:
             yield self.transform_raw(offer)
