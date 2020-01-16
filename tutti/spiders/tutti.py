@@ -2,6 +2,7 @@ import os
 import re
 import json
 import scrapy
+import urllib
 
 
 class TuttiSpider(scrapy.Spider):
@@ -14,10 +15,12 @@ class TuttiSpider(scrapy.Spider):
 
     def start_requests(self):
         for page in range(1, self.pages + 1):
+            params = urllib.parse.urlencode({"o": page, "q": self.searchterm})
+
             yield scrapy.Request(
                 callback=self.parse,
                 dont_filter=True,
-                url=f"https://www.tutti.ch/de/li/ganze-schweiz/angebote?o={page}&q={self.searchterm}",
+                url=f"https://www.tutti.ch/de/li/ganze-schweiz/angebote?{params}",
             )
 
     def transform_raw(self, data):
