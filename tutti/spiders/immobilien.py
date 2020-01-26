@@ -42,6 +42,7 @@ class ImmobilienSpider(scrapy.Spider):
             "price": data.get("price"),
             "time": data.get("epoch_time"),
             "region": data.get("location_info", {}).get("region_name"),
+            "coordinates": data.get("location"),
             "plz": data.get("location_info", {}).get("plz"),
             "link": f"https://www.tutti.ch/vi/{data['id']}",
             "thumbnail": f"https://c.tutti.ch/images/{data.get('thumb_name')}",
