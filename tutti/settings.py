@@ -1,6 +1,6 @@
+import importlib
 import os
 import sys
-import importlib
 
 try:
     from dotenv import load_dotenv
@@ -18,4 +18,7 @@ BOT_NAME = "tutti"
 ROBOTSTXT_OBEY = True
 SPIDER_MODULES = ["tutti.spiders"]
 NEWSPIDER_MODULE = "tutti.spiders"
-ITEM_PIPELINES = {"tutti.pipelines.TuttiPipeline": 300}
+ITEM_PIPELINES = {
+    "tutti.pipelines.MatchSearchtermPipeline": 100,
+    "tutti.pipelines.SlackNotifierPipeline": 300,
+}

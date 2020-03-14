@@ -1,9 +1,31 @@
 import os
+from scrapy.exceptions import DropItem
 from scrapinghub import ScrapinghubClient
 from .utils import post_to_slack
 
 
-class TuttiPipeline:
+class MatchSearchtermPipeline:
+    """
+    Default Tutti.ch search does not work well:
+    I.e. searchterm "Peak Design" matches everything
+    that either has Peak or Design in the text.
+    This pipeline drops items that don't have the
+    full searchterm "Peak Design" (case insensitive).
+    """
+
+    def open_spider(self, spider):
+        self.searchterm = spider.searchterm.lower()
+
+    def process_item(self, item, spider):
+        item_content = (item["subject"] + item["body"]).lower()
+
+        if self.searchterm not in item_content:
+            raise DropItem("Item does not contain searchterm.")
+
+        return item
+
+
+class SlackNotifierPipeline:
     def open_spider(self, spider):
         self.spider = spider
         self.last_job_ids = self.get_last_job_ids()
