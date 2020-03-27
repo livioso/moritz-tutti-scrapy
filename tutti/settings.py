@@ -18,7 +18,9 @@ BOT_NAME = "tutti"
 ROBOTSTXT_OBEY = True
 SPIDER_MODULES = ["tutti.spiders"]
 NEWSPIDER_MODULE = "tutti.spiders"
+
 ITEM_PIPELINES = {
-    "tutti.pipelines.MatchSearchtermPipeline": 100,
+    "tutti.pipelines.MatchPriceMinMaxPipeline": 100,
+    "tutti.pipelines.MatchSearchtermPipeline": 101,
     "tutti.pipelines.SlackNotifierPipeline": 300,
 }

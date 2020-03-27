@@ -1,7 +1,31 @@
 import os
+import re
 from scrapy.exceptions import DropItem
 from scrapinghub import ScrapinghubClient
 from .utils import post_to_slack
+
+
+class MatchPriceMinMaxPipeline:
+    def open_spider(self, spider):
+        self.min_price = spider.min_price
+        self.max_price = spider.max_price
+
+    def process_item(self, item, spider):
+        if self.max_price is None and self.min_price is None:
+            return item
+
+        matches = re.findall("[0-9]+", item["price"])
+
+        if matches:
+            price = int("".join(matches))
+
+            if self.max_price and price > self.max_price:
+                raise DropItem("Item price > max_price.")
+
+            if self.min_price and price < self.min_price:
+                raise DropItem("Item price < min_price.")
+
+        return item
 
 
 class MatchSearchtermPipeline:

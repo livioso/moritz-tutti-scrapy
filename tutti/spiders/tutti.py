@@ -8,10 +8,14 @@ import urllib
 class TuttiSpider(scrapy.Spider):
     name = "tutti"
 
-    def __init__(self, searchterm="", pages=1, **kwargs):
+    def __init__(
+        self, searchterm="", pages=1, min_price=None, max_price=None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.searchterm = searchterm
         self.pages = int(pages)
+        self.min_price = int(min_price) if min_price else None
+        self.max_price = int(max_price) if max_price else None
 
     def start_requests(self):
         for page in range(1, self.pages + 1):
