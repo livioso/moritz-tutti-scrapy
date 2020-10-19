@@ -30,7 +30,7 @@ class ImmobilienSpider(scrapy.Spider):
             yield scrapy.Request(
                 callback=self.parse,
                 dont_filter=True,
-                url=f"https://www.tutti.ch/de/immobilien/objekttyp/{self.object_type}/standort/ort-{self.searchterm}/typ/mieten"
+                url=f"https://www.tutti.ch/de/immobilien/objekttyp/{self.object_type}/standort/{self.searchterm}/typ/mieten"
                 + f"?floor_area={self.min_sqm}&price=,{self.max_price}&rooms={self.rooms}&paging={page}",
             )
 
