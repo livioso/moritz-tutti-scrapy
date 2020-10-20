@@ -12,8 +12,11 @@ class TuttiPipeline:
         self.last_job_executation_time = self.get_last_job_executation_time()
 
     def process_item(self, item, spider):
-        if self.last_job_executation_time < item["time"]:
+        item_time = item["time"]
+
+        if self.last_job_executation_time <= item_time:
             self.handle_webhooks(item)
+
         return item
 
     def get_last_job_executation_time(self):
@@ -38,7 +41,7 @@ class TuttiPipeline:
             searchterm = metadata.get("spider_args", {}).get("searchterm", "")
 
             if self.spider.searchterm == searchterm:
-                return metadata["running_time"]
+                return int(metadata["running_time"] / 1000)
 
         return NO_EXECUTATION_TIME
 
